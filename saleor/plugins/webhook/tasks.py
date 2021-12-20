@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from json import JSONDecodeError
-from typing import TYPE_CHECKING, Callable, Dict, Optional, Tuple, Type
+from typing import TYPE_CHECKING, Callable, Dict, Optional, Tuple, Type, List
 from urllib.parse import urlparse, urlunparse
 
 import boto3
@@ -21,7 +21,7 @@ from ...core.tracing import webhooks_opentracing_trace
 from ...payment import PaymentError
 from ...settings import WEBHOOK_SYNC_TIMEOUT, WEBHOOK_TIMEOUT
 from ...site.models import Site
-from ...webhook.event_types import WebhookEventType
+from ...webhook.event_types import WebhookEventType, SUBSCRIBABLE_EVENTS
 from ...webhook.models import Webhook
 from . import signature_for_payload
 from .utils import (
@@ -31,6 +31,8 @@ from .utils import (
     create_event_delivery_list_for_webhooks,
     delivery_update,
 )
+from ...webhook.subscription_payload import initialize_context, \
+    generate_payload_from_subscription
 
 if TYPE_CHECKING:
     from ...app.models import App
@@ -71,6 +73,7 @@ def _get_webhooks_for_event(event_type, webhooks=None):
         is_active=True,
         app__is_active=True,
         events__event_type__in=[event_type, WebhookEventType.ANY],
+        subscription_query__isnull=True,
         **permissions,
     )
     webhooks = webhooks.select_related("app").prefetch_related(
@@ -79,7 +82,58 @@ def _get_webhooks_for_event(event_type, webhooks=None):
     return webhooks
 
 
-def trigger_webhooks_async(data, event_type):
+def create_payloads_for_subscriptions(event_type, subscribable_object) -> List[EventDelivery]:
+    """Create webhook payload based on subscription query.
+
+    It uses a defined subscription query, defined for webhook to explicitly determine
+    what fields should be included in the payload.
+
+    :param event_type: event type which should be triggered.
+    :param subscribable_object: subscribable object to process via subscription query.
+    :return: List of event deliveries to send via webhook tasks.
+    """
+    if event_type not in SUBSCRIBABLE_EVENTS:
+        logger.info(
+            "Skipping subscription webhook. Event %s is not subscribable.", event_type
+        )
+        return []
+    webhooks_with_subscriptions = Webhook.objects.select_related("app").filter(
+        is_active=True,
+        subscription_query__isnull=False,
+        app__is_active=True,
+    )
+
+    context = initialize_context()
+    event_payloads = []
+    event_deliveries = []
+    for webhook in webhooks_with_subscriptions:
+        data = generate_payload_from_subscription(
+            event_type=event_type,
+            subscribable_object=subscribable_object,
+            subscription_query=webhook.subscription_query,
+            context=context,
+            app=webhook.app
+        )
+        if not data:
+            # FIXME build better way of handling such cases
+            continue
+        if len(data)==1 and "__typename" in data:
+            continue
+        event_payload = EventPayload(payload={"payload": data, "meta": {}})
+        event_payloads.append(event_payload)
+        event_deliveries.append(EventDelivery(
+            status=EventDeliveryStatus.PENDING,
+            event_type=event_type,
+            payload=event_payload,
+            webhook=webhook,
+        ))
+
+    # FIXME we can combine creation of the event deliveries from old webhooks and the
+    #  new one
+    EventPayload.objects.bulk_create(event_payloads)
+    return EventDelivery.objects.bulk_create(event_deliveries)
+
+def trigger_webhooks_async(data, event_type, subscribable_object=None):
     payload = EventPayload.objects.create(payload=data)
     webhooks = _get_webhooks_for_event(event_type)
     deliveries = create_event_delivery_list_for_webhooks(
@@ -87,6 +141,11 @@ def trigger_webhooks_async(data, event_type):
         event_payload=payload,
         event_type=event_type,
     )
+    subscription_deliveries = create_payloads_for_subscriptions(
+        event_type=event_type,
+        subscribable_object=subscribable_object
+    )
+    deliveries.extend(subscription_deliveries)
     for delivery in deliveries:
         send_webhook_request_async.delay(delivery.id)
 

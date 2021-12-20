@@ -1,5 +1,4 @@
 import graphene
-
 from ...core import models as core_models
 from ...webhook import models
 from ...webhook.event_types import WebhookEventType

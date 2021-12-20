@@ -11,6 +11,22 @@ from ..core.mutations import BaseMutation, ModelDeleteMutation, ModelMutation
 from ..core.types.common import WebhookError
 from .enums import WebhookEventTypeEnum
 from .types import EventDelivery
+from ...webhook.subscription_payload import validate_subscription_query
+
+
+def validate_query(query):
+    if not query:
+        return
+    is_valid = validate_subscription_query(query)
+    if not is_valid:
+        raise ValidationError(
+            {
+                "query": ValidationError(
+                    "Subscription query is not valid",
+                    code=WebhookErrorCode.INVALID.value
+                )
+            }
+        )
 
 
 class WebhookCreateInput(graphene.InputObjectType):
@@ -30,6 +46,10 @@ class WebhookCreateInput(graphene.InputObjectType):
     secret_key = graphene.String(
         description="The secret key used to create a hash signature with each payload.",
         required=False,
+    )
+    query = graphene.String(
+        description="Subscription query used to define a webhook payload.",
+        required=False
     )
 
 
@@ -68,6 +88,9 @@ class WebhookCreate(ModelMutation):
                 "App doesn't exist or is disabled",
                 code=WebhookErrorCode.NOT_FOUND,
             )
+        if query:=cleaned_data.get("query"):
+            validate_query(query)
+            instance.subscription_query = query
         return cleaned_data
 
     @classmethod
@@ -115,6 +138,10 @@ class WebhookUpdateInput(graphene.InputObjectType):
     secret_key = graphene.String(
         description="Use to create a hash signature with each payload.", required=False
     )
+    query = graphene.String(
+        description="Subscription query used to define a webhook payload.",
+        required=False
+    )
 
 
 class WebhookUpdate(ModelMutation):
@@ -150,6 +177,10 @@ class WebhookUpdate(ModelMutation):
                 "App doesn't exist or is disabled",
                 code=WebhookErrorCode.NOT_FOUND,
             )
+
+        if query := cleaned_data.get("query"):
+            validate_query(query)
+            instance.subscription_query = query
         return cleaned_data
 
     @classmethod

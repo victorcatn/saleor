@@ -73,25 +73,25 @@ class WebhookPlugin(BasePlugin):
         if not self.active:
             return previous_value
         order_data = generate_order_payload(order)
-        trigger_webhooks_async(order_data, WebhookEventType.ORDER_CREATED)
+        trigger_webhooks_async(order_data, WebhookEventType.ORDER_CREATED, order)
 
     def order_confirmed(self, order: "Order", previous_value: Any) -> Any:
         if not self.active:
             return previous_value
         order_data = generate_order_payload(order)
-        trigger_webhooks_async(order_data, WebhookEventType.ORDER_CONFIRMED)
+        trigger_webhooks_async(order_data, WebhookEventType.ORDER_CONFIRMED, order)
 
     def order_fully_paid(self, order: "Order", previous_value: Any) -> Any:
         if not self.active:
             return previous_value
         order_data = generate_order_payload(order)
-        trigger_webhooks_async(order_data, WebhookEventType.ORDER_FULLY_PAID)
+        trigger_webhooks_async(order_data, WebhookEventType.ORDER_FULLY_PAID, order)
 
     def order_updated(self, order: "Order", previous_value: Any) -> Any:
         if not self.active:
             return previous_value
         order_data = generate_order_payload(order)
-        trigger_webhooks_async(order_data, WebhookEventType.ORDER_UPDATED)
+        trigger_webhooks_async(order_data, WebhookEventType.ORDER_UPDATED, order)
 
     def sale_created(
         self, sale: "Sale", current_catalogue: "NodeCatalogueInfo", previous_value: Any
@@ -151,13 +151,13 @@ class WebhookPlugin(BasePlugin):
         if not self.active:
             return previous_value
         order_data = generate_order_payload(order)
-        trigger_webhooks_async(order_data, WebhookEventType.ORDER_CANCELLED)
+        trigger_webhooks_async(order_data, WebhookEventType.ORDER_CANCELLED, order)
 
     def order_fulfilled(self, order: "Order", previous_value: Any) -> Any:
         if not self.active:
             return previous_value
         order_data = generate_order_payload(order)
-        trigger_webhooks_async(order_data, WebhookEventType.ORDER_FULFILLED)
+        trigger_webhooks_async(order_data, WebhookEventType.ORDER_FULFILLED, order)
 
     def draft_order_created(self, order: "Order", previous_value: Any) -> Any:
         if not self.active:
@@ -205,13 +205,13 @@ class WebhookPlugin(BasePlugin):
         if not self.active:
             return previous_value
         product_data = generate_product_payload(product)
-        trigger_webhooks_async(product_data, WebhookEventType.PRODUCT_CREATED)
+        trigger_webhooks_async(product_data, WebhookEventType.PRODUCT_CREATED, product)
 
     def product_updated(self, product: "Product", previous_value: Any) -> Any:
         if not self.active:
             return previous_value
         product_data = generate_product_payload(product)
-        trigger_webhooks_async(product_data, WebhookEventType.PRODUCT_UPDATED)
+        trigger_webhooks_async(product_data, WebhookEventType.PRODUCT_UPDATED, product)
 
     def product_deleted(
         self, product: "Product", variants: List[int], previous_value: Any
@@ -228,7 +228,7 @@ class WebhookPlugin(BasePlugin):
             return previous_value
         product_variant_data = generate_product_variant_payload([product_variant])
         trigger_webhooks_async(
-            product_variant_data, WebhookEventType.PRODUCT_VARIANT_CREATED
+            product_variant_data, WebhookEventType.PRODUCT_VARIANT_CREATED, product_variant
         )
 
     def product_variant_updated(
@@ -238,7 +238,7 @@ class WebhookPlugin(BasePlugin):
             return previous_value
         product_variant_data = generate_product_variant_payload([product_variant])
         trigger_webhooks_async(
-            product_variant_data, WebhookEventType.PRODUCT_VARIANT_UPDATED
+            product_variant_data, WebhookEventType.PRODUCT_VARIANT_UPDATED, product_variant
         )
 
     def product_variant_deleted(
@@ -248,7 +248,7 @@ class WebhookPlugin(BasePlugin):
             return previous_value
         product_variant_data = generate_product_variant_payload([product_variant])
         trigger_webhooks_async(
-            product_variant_data, WebhookEventType.PRODUCT_VARIANT_DELETED
+            product_variant_data, WebhookEventType.PRODUCT_VARIANT_DELETED,
         )
 
     def product_variant_out_of_stock(self, stock: "Stock", previous_value: Any) -> Any:
@@ -256,7 +256,7 @@ class WebhookPlugin(BasePlugin):
             return previous_value
         product_variant_data = generate_product_variant_with_stock_payload([stock])
         trigger_webhooks_async(
-            product_variant_data, WebhookEventType.PRODUCT_VARIANT_OUT_OF_STOCK
+            product_variant_data, WebhookEventType.PRODUCT_VARIANT_OUT_OF_STOCK, stock
         )
 
     def product_variant_back_in_stock(self, stock: "Stock", previous_value: Any) -> Any:
@@ -264,7 +264,7 @@ class WebhookPlugin(BasePlugin):
             return previous_value
         product_variant_data = generate_product_variant_with_stock_payload([stock])
         trigger_webhooks_async(
-            product_variant_data, WebhookEventType.PRODUCT_VARIANT_BACK_IN_STOCK
+            product_variant_data, WebhookEventType.PRODUCT_VARIANT_BACK_IN_STOCK, stock
         )
 
     def checkout_created(self, checkout: "Checkout", previous_value: Any) -> Any:

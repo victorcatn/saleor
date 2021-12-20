@@ -113,6 +113,7 @@ from .channels import (
     ProductVariantChannelListing,
 )
 from .digital_contents import DigitalContent
+from ....webhook.subscription_payload import generate_payload_from_subscription
 
 destination_address_argument = graphene.Argument(
     account_types.AddressInput,

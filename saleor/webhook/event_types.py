@@ -1,3 +1,5 @@
+from enum import Enum
+
 from ..core.permissions import (
     AccountPermissions,
     CheckoutPermissions,
@@ -223,3 +225,19 @@ class WebhookEventType:
         TRANSLATION_CREATED: SitePermissions.MANAGE_TRANSLATIONS,
         TRANSLATION_UPDATED: SitePermissions.MANAGE_TRANSLATIONS,
     }
+
+
+SUBSCRIBABLE_EVENTS = [
+    WebhookEventType.ORDER_CREATED,
+    WebhookEventType.ORDER_UPDATED,
+    WebhookEventType.ORDER_CONFIRMED,
+    WebhookEventType.ORDER_FULLY_PAID,
+    WebhookEventType.ORDER_FULFILLED,
+    WebhookEventType.ORDER_CANCELLED,
+    WebhookEventType.PRODUCT_CREATED,
+    WebhookEventType.PRODUCT_UPDATED,
+    WebhookEventType.PRODUCT_VARIANT_CREATED,
+    WebhookEventType.PRODUCT_VARIANT_UPDATED,
+    WebhookEventType.PRODUCT_VARIANT_BACK_IN_STOCK,
+    WebhookEventType.PRODUCT_VARIANT_OUT_OF_STOCK,
+]

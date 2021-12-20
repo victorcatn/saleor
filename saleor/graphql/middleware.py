@@ -24,8 +24,9 @@ class JWTMiddleware:
 
         def user():
             return get_user(request) or AnonymousUser()
-
-        request.user = SimpleLazyObject(lambda: user())
+        # FIXME graphql middleware overwrites assigment of user from main middlewares
+        if not hasattr(request, "user"):
+            request.user = SimpleLazyObject(lambda: user())
         return next(root, info, **kwargs)
 
 
