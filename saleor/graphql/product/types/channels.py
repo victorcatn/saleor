@@ -302,6 +302,7 @@ class CollectionChannelListing(ModelObjectType):
 
 
 class MyCollectionChannelListing(CollectionChannelListing):
-    class Meta(CollectionChannelListing.Meta):
+    class Meta:
         description = "Represents my collection channel listing."
         model = models.MyCollectionChannelListing
+        interfaces = [graphene.relay.Node]

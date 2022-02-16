@@ -828,13 +828,16 @@ class CollectionProduct(SortableModel):
         return self.product.collectionproduct.all()
 
 
-class MyCollectionProduct(CollectionProduct):
+class MyCollectionProduct(SortableModel):
     collection = models.ForeignKey(
         "MyCollection", related_name="mycollectionproduct", on_delete=models.CASCADE
     )
     product = models.ForeignKey(
         Product, related_name="mycollectionproduct", on_delete=models.CASCADE
     )
+
+    class Meta:
+        unique_together = (("collection", "product"),)
 
     def get_ordering_queryset(self):
         return self.product.mycollectionproduct.all()
@@ -903,7 +906,14 @@ class Collection(SeoModel, ModelWithMetadata):
         return self.name
 
 
-class MyCollection(Collection):
+class MyCollection(SeoModel, ModelWithMetadata):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="collections",
+        on_delete=models.CASCADE,
+    )
+    name = models.CharField(max_length=250)
+    slug = models.SlugField(max_length=255, unique=True, allow_unicode=True)
     products = models.ManyToManyField(
         Product,
         blank=True,
@@ -911,7 +921,30 @@ class MyCollection(Collection):
         through=MyCollectionProduct,
         through_fields=("collection", "product"),
     )
+    background_image = VersatileImageField(
+        upload_to="collection-backgrounds", blank=True, null=True
+    )
+    background_image_alt = models.CharField(max_length=128, blank=True)
+    description = SanitizedJSONField(blank=True, null=True, sanitizer=clean_editor_js)
+
     objects = models.Manager.from_queryset(MyCollectionsQueryset)()
+
+    translated = TranslationProxy()
+
+    class Meta(ModelWithMetadata.Meta):
+        ordering = ("slug",)
+        indexes = [
+            *ModelWithMetadata.Meta.indexes,
+            GinIndex(
+                name="my_collection_search_gin",
+                # `opclasses` and `fields` should be the same length
+                fields=["name", "slug"],
+                opclasses=["gin_trgm_ops"] * 2,
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class CollectionChannelListing(PublishableModel):
@@ -935,7 +968,7 @@ class CollectionChannelListing(PublishableModel):
         ordering = ("pk",)
 
 
-class MyCollectionChannelListing(CollectionChannelListing):
+class MyCollectionChannelListing(PublishableModel):
     collection = models.ForeignKey(
         MyCollection,
         null=False,
@@ -943,6 +976,17 @@ class MyCollectionChannelListing(CollectionChannelListing):
         related_name="channel_listings",
         on_delete=models.CASCADE,
     )
+    channel = models.ForeignKey(
+        Channel,
+        null=False,
+        blank=False,
+        related_name="my_collection_listings",
+        on_delete=models.CASCADE,
+    )
+
+    class Meta:
+        unique_together = [["collection", "channel"]]
+        ordering = ("pk",)
 
 
 class CollectionTranslation(SeoModelTranslation):

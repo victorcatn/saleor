@@ -270,16 +270,27 @@ class CollectionCreate(ModelMutation):
 
 
 class MyCollectionCreate(CollectionCreate):
-    class Meta(CollectionCreate.Meta):
+
+    class Meta:
         description = "Creates a new personal collection."
         model = models.MyCollection
         object_type = MyCollection
         permissions = tuple()
+        error_type_class = CollectionError
+        error_type_field = "collection_errors"
 
     @classmethod
-    def save(cls, info, instance, cleaned_input):
+    def clean_instance(cls, info, instance):
         instance.user = get_user_or_app_from_context(info.context)
-        super().save(info, instance, cleaned_input)
+        return super().clean_instance(info, instance)
+
+    @classmethod
+    def perform_mutation(cls, _root, info, **kwargs):
+        result = super(ModelMutation).perform_mutation(_root, info, **kwargs)
+        return CollectionCreate(
+            collection=ChannelContext(node=result.myCollection, channel_slug=None)
+        )
+
 
 
 class CollectionUpdate(CollectionCreate):
