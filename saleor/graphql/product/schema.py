@@ -62,12 +62,14 @@ from .mutations.products import (
     CategoryDelete,
     CategoryUpdate,
     CollectionAddProducts,
+    MyCollectionAddProducts,
     CollectionCreate,
     CollectionDelete,
     CollectionRemoveProducts,
     CollectionReorderProducts,
     CollectionUpdate,
     MyCollectionCreate,
+    MyCollectionDelete,
     ProductCreate,
     ProductDelete,
     ProductMediaCreate,
@@ -92,7 +94,9 @@ from .resolvers import (
     resolve_category_by_id,
     resolve_category_by_slug,
     resolve_collection_by_id,
+    resolve_my_collection_by_id,
     resolve_collection_by_slug,
+    resolve_my_collection_by_slug,
     resolve_collections,
     resolve_my_collections,
     resolve_digital_content_by_id,
@@ -160,6 +164,18 @@ class ProductQueries(graphene.ObjectType):
     )
     collection = graphene.Field(
         Collection,
+        id=graphene.Argument(
+            graphene.ID,
+            description="ID of the collection.",
+        ),
+        slug=graphene.Argument(graphene.String, description="Slug of the category"),
+        channel=graphene.String(
+            description="Slug of a channel for which the data should be returned."
+        ),
+        description="Look up a collection by ID.",
+    )
+    my_collection = graphene.Field(
+        MyCollection,
         id=graphene.Argument(
             graphene.ID,
             description="ID of the collection.",
@@ -292,6 +308,29 @@ class ProductQueries(graphene.ObjectType):
             collection = resolve_collection_by_id(info, id, channel, requestor)
         else:
             collection = resolve_collection_by_slug(
+                info, slug=slug, channel_slug=channel, requestor=requestor
+            )
+        return (
+            ChannelContext(node=collection, channel_slug=channel)
+            if collection
+            else None
+        )
+
+    @traced_resolver
+    def resolve_my_collection(self, info, id=None, slug=None, channel=None, **_kwargs):
+        validate_one_of_args_is_in_query("id", id, "slug", slug)
+        requestor = get_user_or_app_from_context(info.context)
+
+        has_required_permissions = has_one_of_permissions(
+            requestor, ALL_PRODUCTS_PERMISSIONS
+        )
+        if channel is None and not has_required_permissions:
+            channel = get_default_channel_slug_or_graphql_error()
+        if id:
+            _, id = from_global_id_or_error(id, MyCollection)
+            collection = resolve_my_collection_by_id(info, id, channel, requestor)
+        else:
+            collection = resolve_my_collection_by_slug(
                 info, slug=slug, channel_slug=channel, requestor=requestor
             )
         return (
@@ -466,7 +505,9 @@ class ProductMutations(graphene.ObjectType):
     collection_translate = CollectionTranslate.Field()
     collection_channel_listing_update = CollectionChannelListingUpdate.Field()
 
+    my_collection_add_products = MyCollectionAddProducts.Field()
     my_collection_create = MyCollectionCreate.Field()
+    my_collection_delete = MyCollectionDelete.Field()
 
     product_create = ProductCreate.Field()
     product_delete = ProductDelete.Field()

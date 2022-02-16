@@ -37,9 +37,24 @@ def resolve_collection_by_id(info, id, channel_slug, requestor):
     )
 
 
+def resolve_my_collection_by_id(info, id, channel_slug, requestor):
+    return (
+        models.MyCollection.objects.visible_to_user(requestor, channel_slug=channel_slug)
+        .filter(id=id)
+        .first()
+    )
+
+
 def resolve_collection_by_slug(info, slug, channel_slug, requestor):
     return (
         models.Collection.objects.visible_to_user(requestor, channel_slug)
+        .filter(slug=slug)
+        .first()
+    )
+
+def resolve_my_collection_by_slug(info, slug, channel_slug, requestor):
+    return (
+        models.MyCollection.objects.visible_to_user(requestor, channel_slug)
         .filter(slug=slug)
         .first()
     )

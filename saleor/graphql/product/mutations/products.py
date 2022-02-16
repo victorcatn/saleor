@@ -350,6 +350,36 @@ class CollectionDelete(ModelDeleteMutation):
         )
 
 
+class MyCollectionDelete(ModelDeleteMutation):
+    class Arguments:
+        id = graphene.ID(required=True, description="ID of a collection to delete.")
+
+    class Meta:
+        description = "Deletes a personal collection."
+        model = models.MyCollection
+        object_type = MyCollection
+        permissions = tuple()
+        error_type_class = CollectionError
+        error_type_field = "collection_errors"
+
+    @classmethod
+    def perform_mutation(cls, _root, info, **kwargs):
+        node_id = kwargs.get("id")
+
+        instance = cls.get_node_or_error(info, node_id, only_type=MyCollection)
+        products = list(instance.products.prefetched_for_webhook(single_object=False))
+
+        result = super().perform_mutation(_root, info, **kwargs)
+
+        info.context.plugins.collection_deleted(instance)
+        for product in products:
+            info.context.plugins.product_updated(product)
+
+        return CollectionDelete(
+            collection=ChannelContext(node=result.myCollection, channel_slug=None)
+        )
+
+
 class MoveProductInput(graphene.InputObjectType):
     product_id = graphene.ID(
         description="The ID of the product to move.", required=True
@@ -495,6 +525,41 @@ class CollectionAddProducts(BaseMutation):
                     )
                 }
             )
+
+
+class MyCollectionAddProducts(CollectionAddProducts):
+    collection = graphene.Field(
+        MyCollection, description="Collection to which products will be added."
+    )
+
+    class Meta:
+        description = "Adds products to a personal collection."
+        permissions = tuple()
+        error_type_class = CollectionError
+        error_type_field = "collection_errors"
+
+    @classmethod
+    @traced_atomic_transaction()
+    def perform_mutation(cls, _root, info, collection_id, products):
+        collection = cls.get_node_or_error(
+            info, collection_id, field="collection_id", only_type=MyCollection
+        )
+        products = cls.get_nodes_or_error(
+            products,
+            "products",
+            Product,
+            qs=models.Product.objects.prefetched_for_webhook(single_object=False),
+        )
+        cls.clean_products(products)
+        collection.products.add(*products)
+        transaction.on_commit(
+            lambda: [
+                info.context.plugins.product_updated(product) for product in products
+            ]
+        )
+        return CollectionAddProducts(
+            collection=ChannelContext(node=collection, channel_slug=None)
+        )
 
 
 class CollectionRemoveProducts(BaseMutation):
