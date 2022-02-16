@@ -299,3 +299,9 @@ class CollectionChannelListing(ModelObjectType):
     @staticmethod
     def resolve_channel(root: models.ProductChannelListing, info, **_kwargs):
         return ChannelByIdLoader(info.context).load(root.channel_id)
+
+
+class MyCollectionChannelListing(CollectionChannelListing):
+    class Meta(CollectionChannelListing.Meta):
+        description = "Represents my collection channel listing."
+        model = models.MyCollectionChannelListing

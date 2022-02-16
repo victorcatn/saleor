@@ -828,6 +828,18 @@ class CollectionProduct(SortableModel):
         return self.product.collectionproduct.all()
 
 
+class MyCollectionProduct(CollectionProduct):
+    collection = models.ForeignKey(
+        "MyCollection", related_name="mycollectionproduct", on_delete=models.CASCADE
+    )
+    product = models.ForeignKey(
+        Product, related_name="mycollectionproduct", on_delete=models.CASCADE
+    )
+
+    def get_ordering_queryset(self):
+        return self.product.mycollectionproduct.all()
+
+
 class CollectionsQueryset(models.QuerySet):
     def published(self, channel_slug: str):
         today = datetime.date.today()
@@ -845,6 +857,14 @@ class CollectionsQueryset(models.QuerySet):
                 return self.filter(channel_listings__channel__slug=str(channel_slug))
             return self.all()
         return self.published(channel_slug)
+
+
+class MyCollectionsQueryset(CollectionsQueryset):
+    def visible_to_user(self, requestor: Union["User", "App"], channel_slug: str):
+        res = self.filter(user=requestor)
+        if channel_slug:
+            res = res.filter(channel_listings__channel__slug=str(channel_slug))
+        return res
 
 
 class Collection(SeoModel, ModelWithMetadata):
@@ -883,6 +903,17 @@ class Collection(SeoModel, ModelWithMetadata):
         return self.name
 
 
+class MyCollection(Collection):
+    products = models.ManyToManyField(
+        Product,
+        blank=True,
+        related_name="mycollections",
+        through=MyCollectionProduct,
+        through_fields=("collection", "product"),
+    )
+    objects = models.Manager.from_queryset(MyCollectionsQueryset)()
+
+
 class CollectionChannelListing(PublishableModel):
     collection = models.ForeignKey(
         Collection,
@@ -902,6 +933,16 @@ class CollectionChannelListing(PublishableModel):
     class Meta:
         unique_together = [["collection", "channel"]]
         ordering = ("pk",)
+
+
+class MyCollectionChannelListing(CollectionChannelListing):
+    collection = models.ForeignKey(
+        MyCollection,
+        null=False,
+        blank=False,
+        related_name="channel_listings",
+        on_delete=models.CASCADE,
+    )
 
 
 class CollectionTranslation(SeoModelTranslation):

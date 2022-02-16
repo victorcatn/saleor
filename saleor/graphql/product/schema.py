@@ -67,6 +67,7 @@ from .mutations.products import (
     CollectionRemoveProducts,
     CollectionReorderProducts,
     CollectionUpdate,
+    MyCollectionCreate,
     ProductCreate,
     ProductDelete,
     ProductMediaCreate,
@@ -440,6 +441,8 @@ class ProductMutations(graphene.ObjectType):
     collection_update = CollectionUpdate.Field()
     collection_translate = CollectionTranslate.Field()
     collection_channel_listing_update = CollectionChannelListingUpdate.Field()
+
+    my_collection_create = MyCollectionCreate.Field()
 
     product_create = ProductCreate.Field()
     product_delete = ProductDelete.Field()

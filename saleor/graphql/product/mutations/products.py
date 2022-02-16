@@ -8,6 +8,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils.text import slugify
 
+from ...utils import get_user_or_app_from_context
 from ....attribute import AttributeInputType, AttributeType
 from ....attribute import models as attribute_models
 from ....core.exceptions import PermissionDenied, PreorderAllocationError
@@ -60,6 +61,7 @@ from ..enums import ProductTypeKindEnum
 from ..types import (
     Category,
     Collection,
+    MyCollection,
     Product,
     ProductMedia,
     ProductType,
@@ -265,6 +267,19 @@ class CollectionCreate(ModelMutation):
         return CollectionCreate(
             collection=ChannelContext(node=result.collection, channel_slug=None)
         )
+
+
+class MyCollectionCreate(CollectionCreate):
+    class Meta(CollectionCreate.Meta):
+        description = "Creates a new personal collection."
+        model = models.MyCollection
+        object_type = MyCollection
+        permissions = tuple()
+
+    @classmethod
+    def save(cls, info, instance, cleaned_input):
+        instance.user = get_user_or_app_from_context(info.context)
+        super().save(info, instance, cleaned_input)
 
 
 class CollectionUpdate(CollectionCreate):

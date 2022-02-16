@@ -123,6 +123,7 @@ from ..resolvers import resolve_product_variants, resolve_products
 from ..sorters import ProductOrder
 from .channels import (
     CollectionChannelListing,
+    MyCollectionChannelListing,
     ProductChannelListing,
     ProductVariantChannelListing,
 )
@@ -1473,9 +1474,28 @@ class Collection(ChannelContextTypeWithMetadata, ModelObjectType):
         return [collections.get(root_id) for root_id in roots_ids]
 
 
+class MyCollection(Collection):
+    translation = None  # TODO: support translations
+    channel_listings = graphene.List(
+        graphene.NonNull(MyCollectionChannelListing),
+        description="List of channels in which the collection is available.",
+    )
+
+    class Meta:
+        default_resolver = ChannelContextType.resolver_with_context
+        description = "Represents a collection of products."
+        interfaces = [relay.Node, ObjectWithMetadata]
+        model = models.MyCollection
+
+
 class CollectionCountableConnection(CountableConnection):
     class Meta:
         node = Collection
+
+
+class MyCollectionCountableConnection(CollectionCountableConnection):
+    class Meta:
+        node = MyCollection
 
 
 @key(fields="id")
