@@ -94,6 +94,7 @@ from .resolvers import (
     resolve_collection_by_id,
     resolve_collection_by_slug,
     resolve_collections,
+    resolve_my_collections,
     resolve_digital_content_by_id,
     resolve_digital_contents,
     resolve_product_by_id,
@@ -117,6 +118,8 @@ from .types import (
     CategoryCountableConnection,
     Collection,
     CollectionCountableConnection,
+    MyCollection,
+    MyCollectionCountableConnection,
     DigitalContent,
     DigitalContentCountableConnection,
     Product,
@@ -172,6 +175,15 @@ class ProductQueries(graphene.ObjectType):
         filter=CollectionFilterInput(description="Filtering options for collections."),
         sort_by=CollectionSortingInput(description="Sort collections."),
         description="List of the shop's collections.",
+        channel=graphene.String(
+            description="Slug of a channel for which the data should be returned."
+        ),
+    )
+    my_collections = FilterConnectionField(
+        MyCollectionCountableConnection,
+        filter=CollectionFilterInput(description="Filtering options for collections."),
+        sort_by=CollectionSortingInput(description="Sort collections."),
+        description="List of personal collections.",
         channel=graphene.String(
             description="Slug of a channel for which the data should be returned."
         ),
@@ -299,6 +311,18 @@ class ProductQueries(graphene.ObjectType):
         kwargs["channel"] = channel
         qs = filter_connection_queryset(qs, kwargs)
         return create_connection_slice(qs, info, kwargs, CollectionCountableConnection)
+
+    def resolve_my_collections(self, info, channel=None, *_args, **kwargs):
+        requestor = get_user_or_app_from_context(info.context)
+        has_required_permissions = has_one_of_permissions(
+            requestor, ALL_PRODUCTS_PERMISSIONS
+        )
+        if channel is None and not has_required_permissions:
+            channel = get_default_channel_slug_or_graphql_error()
+        qs = resolve_my_collections(info, channel)
+        kwargs["channel"] = channel
+        qs = filter_connection_queryset(qs, kwargs)
+        return create_connection_slice(qs, info, kwargs, MyCollectionCountableConnection)
 
     @permission_required(ProductPermissions.MANAGE_PRODUCTS)
     def resolve_digital_content(self, info, id):

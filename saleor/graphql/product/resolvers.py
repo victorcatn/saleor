@@ -52,6 +52,13 @@ def resolve_collections(info, channel_slug):
     return ChannelQsContext(qs=qs, channel_slug=channel_slug)
 
 
+def resolve_my_collections(info, channel_slug):
+    requestor = get_user_or_app_from_context(info.context)
+    qs = models.MyCollection.objects.visible_to_user(requestor, channel_slug)
+
+    return ChannelQsContext(qs=qs, channel_slug=channel_slug)
+
+
 def resolve_digital_content_by_id(id):
     return models.DigitalContent.objects.filter(pk=id).first()
 
